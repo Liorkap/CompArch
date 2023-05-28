@@ -19,10 +19,11 @@ echo "${CYAN}pray: "
 for num in {1..20}
 do
     var=$(cat ./tests/example${num}_command)
-    echo $var
-    ./cacheSim ${var} > ./tests/our_res.txt
-    diff ./tests/our_res.txt ./tests/example${num}_output
-    if cmp ./tests/our_res.txt ./tests/example${num}_output
+    var2=$(echo "./tests/example${num}_trace ${var}")
+    echo $var2
+    ./cacheSim ${var2} > ./tests/our_res.txt
+    diff ./tests/our_res.txt ./ref_results/example${num}_output
+    if cmp ./tests/our_res.txt ./ref_results/example${num}_output
         then
     echo "${GREEN}test ${num} passed";
         else
