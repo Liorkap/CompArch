@@ -18,6 +18,7 @@ using std::cerr;
 using std::ifstream;
 using std::stringstream;
 
+//Entry in cahce
 class Entry{
 public:
 	int offset;
@@ -38,6 +39,8 @@ public:
 
 };
 
+//cache memory
+
 class Cache{
 public:
 	int cacheID;
@@ -52,6 +55,8 @@ public:
 	int tagSize;
 	int setSize;
 	std::vector<Entry>* ways;
+
+	//ctor
 
 	Cache(int size, int cycles, int num_ways, int blockSize, bool writeAlloc, int cacheID){
 		this->cacheID = cacheID;
@@ -71,6 +76,7 @@ public:
 		}
 	}
 
+	//copy ctor
 	Cache(const Cache& other){
 		this->cacheID = other.cacheID;
 		this->size = other.size;
@@ -110,6 +116,7 @@ public:
 		return *this;
 	}
 
+	//get set tag offset from address
 	void addressHandler(int address, int* tag, int* set, int* offset){
 		int offset_mask = 1;
 		int tag_mask = 1;
@@ -132,6 +139,7 @@ public:
 		*offset = address & offset_mask;
 	}
 
+	//does the tag is in the set
 	bool exists(int set, int tag){
 
 		for(int i=0; i < this->num_ways; i++){
@@ -144,6 +152,7 @@ public:
 
 	}
 
+	// get least recently used in set
 	int getLRU(int set){
 		for(int i = 0; i < this->num_ways; i++){
 			if(this->ways[i][set].LRU == 0){
@@ -154,6 +163,7 @@ public:
 		return -1;
 	}
 
+	// update the tag in the set to be most recently used
 	void updateLRU(int set, int tag){
 
 		int idxInSet;
@@ -173,90 +183,8 @@ public:
 		}
 	}
 
-	int findEmptyInSet(int set){
-		for(int i = 0; i < this->num_ways; i++){
-			if(this->ways[i][set].valid == false){
-				return i;
-			}
-		}
 
-		return -1;
-	}
-
-//	bool updateCache(int address, bool write, Entry* evicted, int* evictedSet, bool* is_evicted){
-//		int set;
-//		int tag;
-//		int offset;
-//
-//		this->addressHandler(address, &tag, &set, &offset);
-//
-//		int emptyInSet = this->findEmptyInSet(set);
-//		int oldestLRU = this->getOldestLRU(set);
-//		int idxInSet;
-//		bool lowerNeedsUpdate = false;
-//
-//		if(emptyInSet != -1){
-//			idxInSet = emptyInSet;
-//		}
-//		else{
-//			idxInSet = oldestLRU;
-//			*evicted = this->ways[oldestLRU][set];
-//			*evictedSet = set;
-//			if(this->ways[oldestLRU][set].dirty){
-//				lowerNeedsUpdate = true;
-//			}
-//		}
-//
-//		this->ways[idxInSet][set].valid = true;
-//		this->ways[idxInSet][set].tag = tag;
-//		this->ways[idxInSet][set].offset = offset;
-//		this->updateLRU(address);
-//		if(write){
-//			this->ways[idxInSet][set].dirty = true;
-//		}
-//		else{
-//			this->ways[idxInSet][set].dirty = false;
-//		}
-//
-//		return lowerNeedsUpdate;
-//	}
-
-	bool findEmpty(int address, int* emptyIdx){
-		int set;
-		int tag;
-		int offset;
-
-		this->addressHandler(address, &tag, &set, &offset);
-
-		for(int i = 0; i < this->num_ways; i++){
-			if(this->ways[i][set].valid == false){
-				*emptyIdx = i;
-				return true;
-			}
-		}
-		return false;
-	}
-
-	Entry invalidate(int address){
-		int tag;
-		int set;
-		int offset;
-
-		this->addressHandler(address, &tag, &set, &offset);
-
-		int oldestLRU;
-		for(int i = 0; i < this->num_ways; i++){
-			if(this->ways[i][set].LRU == 0){
-				oldestLRU = i;
-			}
-		}
-
-		ways[oldestLRU][set].valid = false;
-		ways[oldestLRU][set].dirty = false;
-
-		return ways[oldestLRU][set];
-	}
-
+    //find empty in set if no empty return false
 	bool isEmptySpace(int set){
 		for (int i = 0; i<this->num_ways; i++){
 			if(this->ways[i][set].valid == false){
@@ -266,6 +194,7 @@ public:
 		return false;
 	}
 
+	//add address to set iin cache
 	void addToCache(int set, int tag, int address){
 		int  emptyIdx;
 		for (int i = 0; i<this->num_ways; i++){
@@ -280,12 +209,14 @@ public:
 		this->ways[emptyIdx][set].address = address;
 	}
 
-	void remove(int set, int LRU){
-		this->ways[LRU][set].dirty = false;
-		this->ways[LRU][set].valid = false;
+	//remove idx from set
+	void remove(int set, int idx){
+		this->ways[idx][set].dirty = false;
+		this->ways[idx][set].valid = false;
 	}
 };
 
+// the results of the simulation
 class SimResults{
 public:
 	uint32_t L1_hits;
@@ -305,10 +236,11 @@ public:
 	}
 };
 
-Cache L1 = Cache(0,0,1,1,false,0);
-Cache L2 = Cache(0,0,1,1,false,0);
-SimResults results =  SimResults(0);
+Cache L1 = Cache(0,0,1,1,false,0); // global inst of L1 cache
+Cache L2 = Cache(0,0,1,1,false,0); // global ints of L2 cache
+SimResults results =  SimResults(0); // global inst of sim results
 
+// initialize the simulation parameters
 void initSim(int L1_size, int L2_size, int L1_ways, int L2_ways, int L1_cycles, int L2_cycles, bool writeAlloc, int blockSize, int mem_cycles){
 	Cache L1_init = Cache(pow(2,L1_size), L1_cycles, pow(2,L1_ways), pow(2,blockSize), writeAlloc, 1);
 	Cache L2_init = Cache(pow(2,L2_size), L2_cycles, pow(2,L2_ways), pow(2,blockSize), writeAlloc, 2);
@@ -319,22 +251,24 @@ void initSim(int L1_size, int L2_size, int L1_ways, int L2_ways, int L1_cycles, 
 }
 
 
-
+//manages all the L1-L2-MEM access for read/write operations
 void cacheMemHandler(int operation, int address){
 
-	//TODO :: maby no need to seperate operation
 
 	int L1tag, L1set, L1offset;
 	int L2tag, L2set, L2offset;
 	int LRU1;
 	int LRU2;
 
+	//get the sets and tags of the address for L1 and L2 caches
 	L1.addressHandler(address, &L1tag, &L1set, &L1offset);
 	L2.addressHandler(address, &L2tag, &L2set, &L2offset);
+
 
 	if(L1.exists(L1set, L1tag)){
 		results.L1_hits++;
 		L1.updateLRU(L1set, L1tag);
+		//if its a write the data in L1 should be marked  dirty
 		if(operation == 'w'){
 			for(int i = 0; i < L1.num_ways; i++){
 				if(L1.ways[i][L1set].tag == L1tag){
@@ -349,6 +283,7 @@ void cacheMemHandler(int operation, int address){
 		if(L2.exists(L2set, L2tag)){
 			results.L2_hits++;
 			L2.updateLRU(L2set, L2tag);
+			// bring data to L1 only if (writeAlloc and w) or just a (r)
 			if((operation == 'w' && L1.writeAlloc == true) || (operation == 'r')){
 				if(L1.isEmptySpace(L1set)){
 					L1.addToCache(L1set, L1tag,address);
@@ -356,6 +291,7 @@ void cacheMemHandler(int operation, int address){
 				}
 				else{
 					LRU1 = L1.getLRU(L1set);
+					//if removing dirty from L1 write it to L2
 					if(L1.ways[LRU1][L1set].dirty == true){
 						int dirtySet,dirtyTag,dirtyOffset;
 						L2.addressHandler(L1.ways[LRU1][L1set].address, &dirtyTag, &dirtySet, &dirtyOffset);
@@ -371,6 +307,7 @@ void cacheMemHandler(int operation, int address){
 					L1.addToCache(L1set,L1tag,address);
 					L1.updateLRU(L1set,L1tag);
 				}
+				//if its a write the data in L1 should be marked  dirty
 				if(operation == 'w'){
 					for(int i = 0; i < L1.num_ways; i++){
 						if(L1.ways[i][L1set].tag == L1tag){
@@ -384,6 +321,7 @@ void cacheMemHandler(int operation, int address){
 		else{
 			results.L2_misses++;
 			results.mem_access++;
+			// bring data to L1 only if (writeAlloc and w) or just a (r)
 			if((operation == 'w' && L1.writeAlloc == true) || (operation = 'r')){
 				if(L2.isEmptySpace(L2set)){
 					L2.addToCache(L2set,L2tag, address);
@@ -401,6 +339,7 @@ void cacheMemHandler(int operation, int address){
 								break;
 							}
 						}
+						//if removed dirty from L1 write to L2
 						if(L1.ways[idx][removedSet].dirty == true){
 							L2.ways[LRU2][L2set].dirty = true;
 							L2.updateLRU(removedSet, removedTag);
@@ -419,6 +358,7 @@ void cacheMemHandler(int operation, int address){
 				}
 				else{
 					LRU1 = L1.getLRU(L1set);
+					//if removed dirty from L1 write to L2
 					if(L1.ways[LRU1][L1set].dirty == true){
 						int dirtySet,dirtyTag,dirtyOffset;
 						L2.addressHandler(L1.ways[LRU1][L1set].address, &dirtyTag, &dirtySet, &dirtyOffset);
@@ -434,6 +374,7 @@ void cacheMemHandler(int operation, int address){
 					L1.addToCache(L1set,L1tag,address);
 					L1.updateLRU(L1set, L1tag);
 				}
+				//if its a write the data in L1 should be marked  dirty
 				if(operation == 'w'){
 					for(int i = 0; i < L1.num_ways; i++){
 						if(L1.ways[i][L1set].tag == L1tag){
