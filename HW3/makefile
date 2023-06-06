@@ -8,7 +8,7 @@ CC = gcc
 CFLAGS = -std=c99 -Wall
 # Environment for C++
 CXX = g++
-CXXFLAGS = -std=c++11 -Wall
+CXXFLAGS = -std=c++11 -Wall -g
 
 ifeq ($(DEBUG),1)
   CFLAGS += -g -O0
