@@ -10,13 +10,14 @@
 #define SRC1_DEPENDENCE 0
 #define SRC2_DEPENDENCE 1
 
+//Instruction data structure
 class InstData{
 public:
-	int  idx;
+	int  idx; //index of inst
 	InstInfo inst;
-	int instLatency;
-	int depth;
-	int dependencies[MAX_DEPENDENCIES];
+	int instLatency; //opcode latency
+	int depth; // depth of inst in dependence tree
+	int dependencies[MAX_DEPENDENCIES]; //the indexes of insts that effect this inst
 
 	InstData(){
 		this->idx = 0;
@@ -32,11 +33,12 @@ public:
 	}
 };
 
+// Data structure for whole program
 class ProgData{
 public:
-	InstData* insts;
+	InstData* insts; //arr of insts
 	int numOfInsts;
-	int progDepth;
+	int progDepth; //total depth of dependence tree
 
 	ProgData(unsigned int numOfInsts){
 		this->insts = new InstData[numOfInsts];
@@ -49,12 +51,14 @@ public:
 	}
 };
 
+
+// Data structure to save last reg write
 class RegUsage{
 public:
-	int idx;
-	int instLatency;
-	int depth;
-	bool valid;
+	int idx;     //index of last inst to write to reg
+	int instLatency; //latency of last inst to write to reg
+	int depth; //depth of last inst to write to reg
+	bool valid; // valid only if some inst in prog already wrote to this reg
 
 	RegUsage(){
 		this->idx = 0;
@@ -71,36 +75,37 @@ ProgCtx analyzeProg(const unsigned int opsLatency[], const InstInfo progTrace[],
 	int src2Latency = 0;
 
 	for(unsigned int i = 0; i < numOfInsts; i++){
-	//	printf("the inst %d\n", i);
+		src1Latency = 0;
+		src2Latency = 0;
+
+		//update the inst data
 		progData->insts[i].idx = i;
 		progData->insts[i].inst = progTrace[i];
 		progData->insts[i].instLatency = opsLatency[progTrace[i].opcode];
-	//	printf("the opcode lat = %d\n", progData->insts[i].instLatency);
 
+		//if src1 was written by another inst earlier then its dependent
 		if(lastWrite[progTrace[i].src1Idx].valid == true){
 			progData->insts[i].dependencies[SRC1_DEPENDENCE] = lastWrite[progTrace[i].src1Idx].idx;
 			src1Latency = lastWrite[progTrace[i].src1Idx].depth + lastWrite[progTrace[i].src1Idx].instLatency;
 		}
 
+		//if src2 was written by another inst earlier then its dependent
 		if(lastWrite[progTrace[i].src2Idx].valid == true){
-		//	printf("src2 is dependent\n");
 			progData->insts[i].dependencies[SRC2_DEPENDENCE] = lastWrite[progTrace[i].src2Idx].idx;
 			src2Latency = lastWrite[progTrace[i].src2Idx].depth + lastWrite[progTrace[i].src2Idx].instLatency;
-		//	printf("src2 depth = %d\n", lastWrite[progTrace[i].src2Idx].depth);
-			//printf("src2 inst lat = %d\n", lastWrite[progTrace[i].src2Idx].instLatency);
 		}
 
-	//	printf("lat1 = %d, lat2 = %d\n", src1Latency, src2Latency);
-
+		//take the max latency of srcs
 		progData->insts[i].depth = (src1Latency >= src2Latency) ? src1Latency : src2Latency;
 
-	//	printf("the depth = %d\n", progData->insts[i].depth);
 
+		//update the reg that this inst writes to
 		lastWrite[progTrace[i].dstIdx].valid = true;
 		lastWrite[progTrace[i].dstIdx].idx = i;
 		lastWrite[progTrace[i].dstIdx].instLatency = opsLatency[progTrace[i].opcode];
 		lastWrite[progTrace[i].dstIdx].depth = (src1Latency >= src2Latency) ? src1Latency : src2Latency;
 
+		//take the max latency as depth of whole prog
 		if(progData->insts[i].depth + progData->insts[i].instLatency > progData->progDepth){
 			progData->progDepth = progData->insts[i].depth + progData->insts[i].instLatency;
 		}
