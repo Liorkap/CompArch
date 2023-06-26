@@ -1,5 +1,5 @@
 all: sim_main
-
+DEBUG = 1
 # Env for C
 CC = gcc
 CFLAGS = -std=c99 -Wall -O0
@@ -27,14 +27,14 @@ OBJ = $(OBJ_GIVEN) $(OBJ_CORE)
 
 ifeq ($(SRC_CORE),core_api.c)
 sim_main: $(OBJ)
-	gcc -o $@ $(OBJ)
+	gcc -g -o $@ $(OBJ)
 
 sim_core.o: sim_core.c
 	gcc -c $(CFLAGS) -o $@ $<
 
 else
 sim_main: $(OBJ)
-	g++ -o $@ $(OBJ)
+	g++ -g -o $@ $(OBJ)
 
 sim_core.o: sim_core.cpp
 	g++ -c $(CXXFLAGS) -o $@ $<
